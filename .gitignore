@@ -1,2 +1,4 @@
 .DS_Store
 Interactive-1.ipynb
+.streamlit/secrets.toml
+.env
