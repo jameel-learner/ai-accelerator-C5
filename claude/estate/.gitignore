@@ -1,0 +1,8 @@
+# per-user workspaces contain family financial data - never commit
+user_data/
+# real family names/dates/amounts - never commit
+config.json
+# OAuth client secrets
+.streamlit/secrets.toml
+__pycache__/
+*.pyc
