@@ -56,6 +56,51 @@ def save_config(cfg: dict, path: str = CONFIG_PATH) -> None:
     os.replace(tmp, path)
 
 
+def baseline_version(cfg) -> str:
+    return str(cfg.get("meta", {}).get("baseline_version", ""))
+
+
+def migrate_to_baseline(saved_cfg: dict, base_cfg: dict):
+    """
+    Bring a saved workspace onto the current shared baseline.
+
+    The baseline carries the family's agreed FACTS - properties, rent units,
+    streams, receivables, the fiqh reasoning.  A workspace carries one person's
+    SCENARIO - which basis they are looking at, the as-of date, and the policy
+    switches.  When the facts change, the facts win: we rebuild from the
+    baseline and carry only the scenario across, for keys the baseline still
+    recognises.
+
+    Returns (migrated_cfg, report) where report is None if nothing was stale.
+    """
+    if not isinstance(saved_cfg, dict):
+        return copy.deepcopy(base_cfg), {"reason": "unreadable workspace", "kept": [], "dropped": []}
+
+    sv = baseline_version(saved_cfg)
+    bv = baseline_version(base_cfg)
+    if sv == bv and set(saved_cfg.get("policy", {})) == set(base_cfg.get("policy", {})):
+        return saved_cfg, None
+
+    out = copy.deepcopy(base_cfg)
+    kept, dropped = [], []
+    saved_policy = saved_cfg.get("policy", {}) or {}
+    for k, v in saved_policy.items():
+        if k in out["policy"]:
+            out["policy"][k] = v
+            kept.append(k)
+        else:
+            dropped.append(k)
+
+    added = [k for k in out["policy"] if k not in saved_policy]
+    return out, {
+        "from_version": sv or "(unversioned)",
+        "to_version": bv,
+        "kept": sorted(kept),
+        "dropped": sorted(dropped),
+        "added": sorted(added),
+    }
+
+
 def d(s):
     if s is None:
         return None
@@ -176,11 +221,25 @@ def valuation(cfg):
                       "amount": float(amt), "note": l.get("note", "")})
     ldf = pd.DataFrame(liabs)
 
-    gross_corpus = float(df["estate_value"].sum())
+    # debts owed TO the estate: assets of the tarikah, recovered from the debtor
+    recv = [dict(r) for r in cfg.get("estate_receivables", [])]
+    include_recv = policy.get("include_estate_receivables", True)
+    rdf = pd.DataFrame(recv) if recv else pd.DataFrame(
+        columns=["id", "debtor", "amount", "date", "label", "reason"])
+    if len(rdf):
+        rdf["amount"] = rdf["amount"].astype(float)
+        rdf["counted"] = include_recv
+    receivables_total = float(rdf["amount"].sum()) if (len(rdf) and include_recv) else 0.0
+
+    property_corpus = float(df["estate_value"].sum())
+    gross_corpus = property_corpus + receivables_total
     total_liab = float(ldf["amount"].sum())
     return {
         "properties": df,
         "liabilities": ldf,
+        "receivables": rdf,
+        "receivables_total": receivables_total,
+        "property_corpus": property_corpus,
         "tenant_advances": advances,
         "gross_corpus": gross_corpus,
         "total_liabilities": total_liab,
@@ -212,6 +271,33 @@ def _amount(stream, seg_start, seg_end):
     raise ValueError(f"unknown period {per!r} on stream {stream.get('id')}")
 
 
+INCOME_KINDS = ("rent", "occupation_charge", "notional_rent")
+
+
+def _pool_amount(cfg, source_ids, seg0, seg1, as_of):
+    """
+    Value of a distribution segment: the accrual of its source streams over the
+    same dates.  Derived rather than hardcoded so that changing a flat's rent
+    automatically changes what gets pooled and shared out.
+    """
+    total = 0.0
+    for st in cfg["streams"]:
+        if st["id"] not in source_ids:
+            continue
+        s0 = d(st["start"])
+        s1 = d(st["end"]) if st.get("end") else as_of
+        ov = _overlap(s0, min(s1, as_of), seg0, seg1)
+        if ov:
+            total += _amount(st, ov[0], ov[1])
+    return total
+
+
+def _weights(stream):
+    w = stream.get("weights") or {}
+    tot = sum(float(v) for v in w.values())
+    return ({k: float(v) / tot for k, v in w.items()} if tot else {}), tot
+
+
 def windows(cfg, as_of):
     fd = d(_estate(cfg, "EF")["death_date"])
     md = d(_estate(cfg, "EM")["death_date"])
@@ -235,6 +321,7 @@ def ledger(cfg, as_of=None):
     as_of = d(as_of or policy.get("as_of") or cfg["meta"]["as_of"])
     wins = windows(cfg, as_of)
 
+    by_id = {x["id"]: x for x in cfg["streams"]}
     rows = []
     for st in cfg["streams"]:
         if st.get("assumed") and not policy.get("allow_assumed_streams", True):
@@ -248,6 +335,13 @@ def ledger(cfg, as_of=None):
             if not ov:
                 continue
             seg0, seg1 = ov
+            if st["kind"] == "distribution" and st.get("amount") is None:
+                amt = _pool_amount(cfg, set(st.get("source_streams") or []),
+                                   seg0, seg1, as_of)
+                rate = amt / max((seg1 - seg0).days / DAYS_PER_MONTH, 1e-9)
+            else:
+                amt = _amount(st, seg0, seg1)
+                rate = float(st["amount"])
             rows.append({
                 "stream_id": st["id"],
                 "kind": st["kind"],
@@ -259,9 +353,9 @@ def ledger(cfg, as_of=None):
                 "seg_start": seg0,
                 "seg_end": seg1,
                 "months": (seg1 - seg0).days / DAYS_PER_MONTH,
-                "rate": float(st["amount"]),
+                "rate": rate,
                 "period": st.get("period"),
-                "amount": _amount(st, seg0, seg1),
+                "amount": amt,
                 "assumed": bool(st.get("assumed")),
                 "note": st.get("note", ""),
             })
@@ -300,13 +394,14 @@ def allocate(cfg, as_of=None, basis=None):
     basis = basis or policy.get("basis", "timeline")
     led, as_of = ledger(cfg, as_of)
     maps = _active_map(cfg, basis)
+    by_id = {x["id"]: x for x in cfg["streams"]}
 
     charge_occ = policy.get("charge_occupation_rent", False)
     include_pre = policy.get("include_pre_death_flows", False)
     reimburse = policy.get("expenses_are_reimbursable", True)
 
     def in_scope(r):
-        if r["kind"] == "notional_rent" and not charge_occ:
+        if r["kind"] in ("notional_rent", "occupation_charge") and not charge_occ:
             return False
         if r["window"] == W_LIFETIME:
             return bool(include_pre)
@@ -330,7 +425,57 @@ def allocate(cfg, as_of=None, basis=None):
         else:
             omap = maps[r["window"]]
         amt = float(r["amount"])
-        income = r["kind"] in ("rent", "notional_rent")
+
+        # ---- distributions are transfers, not new income -------------------
+        # The rent already accrued to everyone per fara'id above.  A
+        # distribution only records that the collector physically handed part
+        # of it over, which reduces his over-collection and the recipients'
+        # shortfall.  Nobody's *entitlement* changes.
+        if r["kind"] == "distribution":
+            st = by_id.get(r["stream_id"], {})
+            w, _tot = _weights(st)
+            paid_out = 0.0
+            for pid, frac in w.items():
+                if pid == r["actor"]:
+                    continue
+                share = amt * frac
+                paid_out += share
+                recs.append({
+                    "person": pid, "stream_id": r["stream_id"], "kind": r["kind"],
+                    "category": r["category"], "property": r["property"],
+                    "unit": r["unit"], "window": r["window"], "actor": r["actor"],
+                    "share": frac, "entitled": 0.0, "received": share,
+                    "liable": 0.0, "paid": 0.0, "net": -share,
+                })
+            recs.append({
+                "person": r["actor"], "stream_id": r["stream_id"], "kind": r["kind"],
+                "category": r["category"], "property": r["property"],
+                "unit": r["unit"], "window": r["window"], "actor": r["actor"],
+                "share": w.get(r["actor"], 0.0), "entitled": 0.0,
+                "received": -paid_out, "liable": 0.0, "paid": 0.0, "net": paid_out,
+            })
+            continue
+
+        income = r["kind"] in INCOME_KINDS
+
+        # The collector/payer may not be an owner under the selected basis - the
+        # mother, for instance, is absent from the map on the 'mother_death'
+        # basis.  Record their side anyway, or the transfer stops netting to
+        # zero and money appears from nowhere.  Her balance is then rolled into
+        # her own tarikah by settlement().
+        if r["actor"] not in omap:
+            recs.append({
+                "person": r["actor"], "stream_id": r["stream_id"], "kind": r["kind"],
+                "category": r["category"], "property": r["property"],
+                "unit": r["unit"], "window": r["window"], "actor": r["actor"],
+                "share": 0.0,
+                "entitled": 0.0,
+                "received": amt if income else 0.0,
+                "liable": 0.0,
+                "paid": amt if (not income and reimburse) else 0.0,
+                "net": (-amt if income else (amt if reimburse else 0.0)),
+            })
+
         for pid, frac in omap.items():
             fr = float(frac)
             rec = {
@@ -364,7 +509,8 @@ def allocate(cfg, as_of=None, basis=None):
     totals = {
         "as_of": as_of,
         "basis": basis,
-        "income_in_scope": float(inscope.loc[inscope["kind"].isin(["rent", "notional_rent"]), "amount"].sum()) if len(inscope) else 0.0,
+        "income_in_scope": float(inscope.loc[inscope["kind"].isin(INCOME_KINDS), "amount"].sum()) if len(inscope) else 0.0,
+        "distributed": float(inscope.loc[inscope["kind"] == "distribution", "amount"].sum()) if len(inscope) else 0.0,
         "expense_in_scope": float(inscope.loc[inscope["kind"] == "expense", "amount"].sum()) if len(inscope) else 0.0,
         "out_of_scope": float(led.loc[~led["in_scope"], "amount"].sum()) if len(led) else 0.0,
     }
@@ -377,8 +523,9 @@ def allocate(cfg, as_of=None, basis=None):
 
 def _excl_reason(charge_occ, include_pre, basis):
     def f(r):
-        if r["kind"] == "notional_rent" and not charge_occ:
-            return "Notional rent switched OFF (Hanafi: a co-owner in occupation of musha' owes no ujrat al-mithl)"
+        if r["kind"] in ("notional_rent", "occupation_charge") and not charge_occ:
+            return ("Occupation rent switched OFF (classical Hanafi: a co-owner in occupation "
+                    "of musha' owes no ujrat al-mithl)")
         if r["window"] == W_LIFETIME and not include_pre:
             return "Pre-death flow - the father was alive and owned 100%; outside the fara'id"
         if basis == "mother_death" and r["window"] == W_POST_F:
@@ -477,6 +624,12 @@ def settlement(cfg, as_of=None, basis=None):
         net_flow += mother_net * float(s["em"].get(pid, 0))
         gld = gold["table"].loc[gold["table"]["person"] == pid, "delta_value"]
         gold_adj = -float(gld.iloc[0]) if len(gld) else 0.0
+        # a debt owed to the estate is charged in full to the debtor; he then
+        # takes his own fara'id share of it back through corpus_entitlement
+        owed = 0.0
+        if policy.get("include_estate_receivables", True):
+            owed = -sum(float(r["amount"]) for r in cfg.get("estate_receivables", [])
+                        if r.get("debtor") == pid)
         rows.append({
             "person": pid,
             "name": people_index(cfg)[pid]["name"],
@@ -486,26 +639,10 @@ def settlement(cfg, as_of=None, basis=None):
             "corpus_entitlement": corpus,
             "income_expense_net": net_flow,
             "gold_adjustment": gold_adj,
-            "gift_setoff": 0.0,
-            "total_entitlement": corpus + net_flow + gold_adj,
+            "receivable_due": owed,
+            "total_entitlement": corpus + net_flow + gold_adj + owed,
         })
     df = pd.DataFrame(rows)
-
-    if policy.get("treat_2015_gift_as_advance"):
-        gifts = [a for a in cfg["lifetime_acts"]
-                 if a["kind"] == "hiba" and a.get("beneficiary")]
-        for a in gifts:
-            b = a["beneficiary"]
-            amt = float(a["amount"])
-            if b not in set(df["person"]):
-                continue
-            df.loc[df["person"] == b, "gift_setoff"] -= amt
-            others = df["person"] != b
-            n_units = df.loc[others, "share_pct"].sum()
-            if n_units > 0:
-                df.loc[others, "gift_setoff"] += amt * df.loc[others, "share_pct"] / n_units
-        df["total_entitlement"] = (df["corpus_entitlement"] + df["income_expense_net"]
-                                   + df["gold_adjustment"] + df["gift_setoff"])
 
     return {"table": df, "valuation": val, "flows": res, "shares": s, "gold": gold,
             "mother_net_rolled": mother_net,
@@ -526,7 +663,9 @@ def scope_register(cfg, as_of=None, basis=None):
             "ref": a["id"], "when": a["date"], "what": a["label"],
             "actor": a.get("actor"), "amount": float(a.get("amount") or 0),
             "scope": "IN" if a.get("in_estate") else "OUT",
-            "bucket": "Lifetime act (tasarruf of a living owner)",
+            "bucket": ("Lifetime act now brought INTO the estate"
+                       if a.get("in_estate")
+                       else "Lifetime act (tasarruf of a living owner)"),
             "reason": a["reason"],
         })
 
@@ -542,6 +681,16 @@ def scope_register(cfg, as_of=None, basis=None):
                 "bucket": "Estate income" if r["kind"] in ("rent", "notional_rent") else "Estate expense",
                 "reason": r["excl_reason"] or "Accrued on jointly-owned tarikah property after death; shared pro rata",
             })
+
+    for r in cfg.get("estate_receivables", []):
+        rows.append({
+            "ref": r["id"], "when": r.get("date", ""),
+            "what": r.get("label", ""), "actor": r.get("debtor"),
+            "amount": float(r["amount"]),
+            "scope": "IN" if cfg["policy"].get("include_estate_receivables", True) else "OUT",
+            "bucket": "Debt owed TO the estate (dayn lahu)",
+            "reason": r.get("reason", ""),
+        })
 
     g = cfg["gold"]
     rows.append({

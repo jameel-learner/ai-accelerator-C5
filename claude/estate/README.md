@@ -10,40 +10,51 @@ computed under **Sunni Hanafi** inheritance rules, with a Streamlit front end.
 
 ---
 
-## 1. The first and most important step: what the fara'id does *not* touch
+## 1. What the fara'id reaches — and what it does not
 
 Inheritance opens **at the instant of death**, over what the deceased owned **at that instant**.
-Everything an owner did while alive is his own affair and cannot be reopened by the heirs.
 Sorting the facts into these buckets *before* doing any arithmetic removes most of the argument.
 
-### 1a. OUTSIDE the fara'id — closed, not reviewable
+**Baseline of 8 September 2026.** Where the family has decided a point, that decision governs
+and is recorded in §1a, with a switch so the classical alternative can still be inspected.
+
+### 1a. Decided by the family — brought INTO the estate
+
+These reverse the classical default. The family has settled them, and the workbook treats
+them as facts, each with a switch so the alternative can still be seen.
+
+| Ref | Fact | Treatment |
+|-----|------|-----------|
+| **X1** | ₹28,00,000 handed to B2 in 2015 out of the Neelsandra sale proceeds | **A debt owed to the estate by B2.** Not treated as a completed *hiba*. Added to the corpus as a receivable and charged in full against B2, who then takes his own 2/7 of it back with everyone else. Net cost to B2: ₹20.00 L. |
+| **X3** | Electronic City property sold by B1 for ₹28,00,000 in 2021 | **A debt owed to the estate by B1.** The property was estate property; the proceeds are recoverable as a *dayn*. Same mechanism, same net cost to B1: ₹20.00 L. |
+| **2/1** | B2 in occupation of P2 flat 2/1 | **₹10,500/month payable to the estate from the father's death** (20 Jul 2022). No deposit held — advance set to 0. |
+| **P3 duplex** | B1 in occupation | **₹42,000/month payable to the estate from the mother's death** (28 Oct 2025). No deposit held. |
+| **P3 cellar** | S1 in occupation | **₹7,000/month payable to the estate from the mother's death**. No deposit held. |
+
+> Note on X1 and X3: both transfers happened while the father was alive, so the strict
+> classical analysis would put them outside the *tarikah* — a completed gift is irrevocable,
+> and money taken from a living owner is an account between him and that child, not between
+> the heirs. The family has decided otherwise, which is their right where every adult heir
+> agrees. What makes it work is that the sums are treated as **debts recoverable by the
+> estate**, which *is* a recognised category (*dayn lahu*), rather than as a clawback of a
+> valid gift. Record the agreement in writing.
+
+### 1b. Still OUTSIDE the fara'id
 
 | Ref | Fact | Why it is outside |
 |-----|------|-------------------|
-| **X1** | Neelsandra sold for ₹41,00,000 in 2015, in the father's presence | The father's own `tasarruf` in his own `mulk`. The corpus left his ownership seven years before death, so it never entered the `tarikah`. Only whatever **remained of the proceeds** on 20 Jul 2022 is estate property. |
-| **L2** | ₹28,00,000 given to B2 in 2015 for business | A completed **hiba** — offer, acceptance and `qabd` (delivery) in the donor's lifetime. Valid and **irrevocable** in favour of a descendant. **Hanafi law has no hotchpot/advancement doctrine**, so it is *not* set off against B2's share. Unequal gifting between children is at most *makruh* (hadith of Nu'man b. Bashir) — a moral defect, not a proprietary one. |
-| **L3** | B1 living in P3 since 2008 with the parents | Permissive occupation (`'ariyya`) from the living owner. No liability for anything before 20 Jul 2022. |
-| **L4** | B2 living in P2 flat 2/1 since Jul 2019 | Same, for the pre-death period. |
-| **L5** | Rents collected by B1 from 2015 to 20 Jul 2022 (**₹42.12 L** on these figures) | Collected as the father's `wakil` during his life. A father-to-son account, not an estate account. |
+| **L5** | Rents collected by B1 from 2015 to 20 Jul 2022 (**₹42.12 L**) | Collected as the father's *wakil* during his life. A father-to-son account, not an estate account — unless collection without his consent is proved, which converts it into a *dayn*. The `include_pre_death_flows` switch models that. |
+| **L3 / L4** | B1 in P3 from 2008; B2 in 2/1 from Jul 2019 — the **pre-death** years | Permissive occupation (*'ariyya*) from the living owner. Nothing is charged before the dates fixed above. |
 | **—** | P2 flats 2/2, 2/3, 1/4, 1/5 sold to outside owners | Conveyed before death. Neither the flats nor their rents are estate property. |
-| **—** | The 35% partner's stake in P1 | Never the deceased's `mulk`; never entered the `tarikah`. |
+| **—** | The 35% partner's stake in P1 | Never the deceased's *mulk*; never entered the *tarikah*. |
 
-**The one door that stays open on L5.** If the family can *prove* B1 collected without the
-father's consent, those rents convert into a **`dayn`** (debt) owed **to** the `tarikah`, payable
-before any shares. That is an allegation with a burden of proof, not a default. The
-`include_pre_death_flows` switch models it; keep it **OFF** unless you can prove it.
-
-**The one door that stays open on L2.** The gift stands in law. What the family *may* do is agree
-a **`sulh`** (compromise) in which B2 accepts a set-off. That is a negotiated settlement, not an
-entitlement of the other four. The `treat_2015_gift_as_advance` switch models it.
-
-### 1b. SUSPENDED (`mawquf`) — vests in principle, cannot be quantified yet
+### 1c. SUSPENDED (`mawquf`) — vests in principle, cannot be quantified yet
 
 | Ref | Fact | Treatment |
 |-----|------|-----------|
 | **P6** | Berli Street, 600 sqft, title contested by an SC/ST party, pending in the Supreme Court | Shares vest, but the asset cannot be valued or partitioned until decreed. **Distribute the other five properties now and keep P6 in a separate schedule** with the same 2:1 fractions recorded, to be given effect if and when the decree comes. Excluding it does not prejudice anyone. |
 
-### 1c. INSIDE the fara'id — fully reviewable
+### 1d. INSIDE the fara'id — fully reviewable
 
 - The corpus of **P1–P5** as at 20 Jul 2022 (P1 only to the extent of the 65% share).
 - **All rent from 20 Jul 2022 onwards** on every estate property — it accrues on jointly owned
@@ -51,10 +62,15 @@ entitlement of the other four. The `treat_2015_gift_as_advance` switch models it
 - **All estate expenditure from 20 Jul 2022** — taxes, maintenance, repairs. A co-owner who
   preserves the common property may recover the others' rateable share.
 - The **140 g of gold** — the mother's own `mulk`, so it is her `tarikah`, divisible 2:1.
-- Refundable **tenant deposits (₹16,00,000)** — an `amanah` held for tenants and therefore a
-  `dayn` of the estate, payable before the shares.
+- Refundable **tenant deposits (₹14,00,000)** — an `amanah` held for tenants and therefore a
+  `dayn` of the estate, payable before the shares. The 2/1 and P3 deposits are now nil.
+- **B2's pooling arrangement from Sep 2026** — he collects four P2 flats (1/6, 2/6, 2/7 and
+  2/4 at ₹8,250) and divides the pool into five shares: two to himself, one each to S1, S2
+  and S3. B1 does not participate. This is a *sulh* on **distribution**, not on shares:
+  entitlements stay 2:1, and the payments simply reduce B2's over-collection and the
+  sisters' shortfall.
 
-### 1d. CONTESTED — the two live issues
+### 1e. CONTESTED — the two live issues
 
 **(i) S1's 30 g bangles.** The Hanafi test is mechanical: a `hiba` is complete only on
 `ijab` + `qabul` + **`qabd`** — actual delivery of possession in the donor's lifetime. If S1 held
@@ -69,20 +85,16 @@ as a **`sulh`** with the free, informed consent of every adult heir. If everyone
 it is binding and closed. If some heirs did not, it must be redone or compensated in cash.
 **Record the consent in writing.**
 
-### 1e. The policy question that moves the most money
+### 1f. The policy question, now settled
 
 **Does an heir occupying joint property owe rent to the others?**
 
-- **Classical Hanafi: no.** A `sharik` in occupation of `musha'` (undivided joint) property owes
-  no `ujrat al-mithl` to the co-owners — the benefit (`manfa'ah`) does not bear `daman`. This is
-  the app's default, and it is why the switch starts OFF.
-- **Indian law: often yes.** A co-owner in exclusive possession can be made to account for
-  **mesne profits** (CPC s.2(12)) in a partition suit.
-- **Practically:** the family can agree a `sulh` charging notional rent from the date of death.
-
-The switch flips both occupations at once, which keeps it even-handed — B1 in the HSR duplex at
-₹50,000/month and B2 in flat 2/1 at ₹15,000/month. Turning it ON roughly **doubles** the
-inter-heir settlement and moves B1's position from about **−₹11 L to −₹27 L**.
+- **Classical Hanafi: no.** A *sharik* in occupation of *musha'* (undivided joint) property
+  owes no *ujrat al-mithl* — the benefit (*manfa'ah*) does not bear *daman*.
+- **Indian law: often yes** — mesne profits, CPC s.2(12), in a partition suit.
+- **This family has decided: yes**, at the rates and from the dates in §1a. The
+  `charge_occupation_rent` switch now defaults **ON**; turning it off shows the classical
+  position and removes about **₹10.3 L** from the account.
 
 ---
 
@@ -126,7 +138,9 @@ The two stages still must be run separately for the **income** between 20 Jul 20
 
 ---
 
-## 3. Headline numbers (defaults: P6 excluded, notional rent OFF, gold 2:1, as at 28 Aug 2026)
+## 3. Headline numbers
+
+*Baseline of 8 Sep 2026 · timeline basis · P6 excluded · occupation rents charged · debts to the estate included · gold 2:1*
 
 **Corpus**
 
@@ -138,45 +152,37 @@ The two stages still must be run separately for the **income** between 20 Jul 20
 | P2 BismillahNagar (our 10 flats + tower) | ₹2.80 cr |
 | P4 Anjanapura | ₹2.50 cr |
 | P6 Berli Street | *suspended — sub judice* |
-| **Gross corpus** | **₹29.21 cr** |
-| less refundable tenant deposits | (₹26.00 L) |
-| **Net distributable** | **₹28.95 cr** |
+| **Property corpus** | **₹29.21 cr** |
+| X3 owed by B1 + X1 owed by B2 | ₹56.00 L |
+| **Gross corpus** | **₹29.77 cr** |
+| less refundable tenant deposits | (₹14.00 L) |
+| **Net distributable** | **₹29.63 cr** |
 
-**Per head, corpus only**
+**Per heir**
 
-| Heir | Share | Corpus entitlement |
-|---|---|---|
-| Suhail, Jameel | 2/7 each | **₹8.27 cr** each |
-| Fouzia, Shabanaz, Shahnaz | 1/7 each | **₹4.14 cr** each |
+| Heir | Share | Corpus | Rent/expense net | Gold | Owed back | **Total** |
+|---|---|---|---|---|---|---|
+| Suhail | 2/7 | ₹8.47 cr | −₹12.72 L | +₹1.71 L | −₹28.00 L | **₹8.08 cr** |
+| Jameel | 2/7 | ₹8.47 cr | −₹3.23 L | +₹1.71 L | −₹28.00 L | **₹8.17 cr** |
+| Fouzia | 1/7 | ₹4.23 cr | +₹2.76 L | −₹3.04 L | — | **₹4.23 cr** |
+| Shabanaz | 1/7 | ₹4.23 cr | +₹6.59 L | −₹19,000 | — | **₹4.30 cr** |
+| Shahnaz | 1/7 | ₹4.23 cr | +₹6.59 L | −₹19,000 | — | **₹4.30 cr** |
 
-**Post-death income & expenses accounted** (20 Jul 2022 → 28 Aug 2026)
+The heirs' totals sum to **₹29.07 cr**, not ₹29.63 cr. That is not a leak: ₹56 L of the corpus
+is still outside the pot, and arrives as B1 and B2 pay their debts in. Everyone's share of that
+₹56 L is already counted in the Corpus column above.
+
+**Flows, 20 Jul 2022 → 8 Sep 2026**
 
 | | |
 |---|---|
-| Rent that accrued to the estate | ₹52.12 L |
-| Estate expenses (tax, maintenance, repairs) | ₹7.43 L |
-| **Net estate income** | **₹44.69 L** |
-| Excluded as pre-death or un-charged notional rent | ₹2.09 cr |
+| Rent and occupation charges accrued to the estate | ₹62.78 L |
+| Estate expenses (tax, maintenance, repairs) | ₹7.49 L |
+| Excluded as pre-death | ₹83.70 L |
 
-**Inter-heir settlement** (default switches) — positive = owed to this heir
-
-| Heir | Net |
-|---|---|
-| Suhail | **−₹11.22 L** |
-| Jameel | −₹0.97 L |
-| Fouzia | +₹2.01 L |
-| Shabanaz | +₹5.09 L |
-| Shahnaz | +₹5.09 L |
-
-Shabanaz and Shahnaz have received **nothing at all** since the father's death while holding 1/7
-each. That is the single clearest finding in the model, and it is true on every basis and every
-switch setting.
-
-The mother's own position (−₹4.58 L: she drew tower rent exceeding her 1/8) was never settled in
-her lifetime, so it rolls into her `tarikah` and re-splits 2:1 among the five — the app does this
-automatically and shows it.
-
----
+Shabanaz and Shahnaz have received **almost nothing** since the father's death while holding
+1/7 each — B2's pooling arrangement began only in September 2026. That remains the clearest
+finding in the model, and it holds on every basis and every switch setting.
 
 ## 4. Analytics the app produces
 
@@ -202,10 +208,15 @@ automatically and shows it.
    strongest financial argument for selling and distributing.
 3. **The gold is generating heat out of all proportion.** It is under 1% of the estate. Settle it
    with a cash adjustment and move on.
-4. **The notional-rent switch is worth about ₹16 L** and is the only genuinely contestable fiqh
-   question with real money attached. Decide it once, in writing, before valuing anything.
-5. **Two heirs have received nothing for four years.** Whatever else is agreed, an interim
-   distribution of accumulated rent to S2 and S3 is overdue and is not controversial on any view.
+4. **The occupation charges are now agreed** and worth about ₹10.3 L to the estate. Put the
+   agreement in writing — the rates, the start dates, and the fact that no deposits are held.
+5. **Two heirs have received almost nothing for four years.** B2's pooling arrangement from
+   Sep 2026 starts to fix this for S1, S2 and S3, but it addresses only four flats and
+   excludes B1 entirely. An interim distribution of the accumulated rent is still overdue
+   and is not controversial on any view.
+6. **B1 and B2 owe ₹28 L each back to the estate.** After taking their own shares back, the
+   net cost is about ₹20 L to each. This is the single largest movement in the account and
+   should be documented as a debt, not a gift clawback — that is what makes it sound.
 
 ---
 
@@ -305,11 +316,26 @@ saved settings.
 Everything is additive — no code changes needed for new facts:
 
 - **A new event** (a rent change, a new tenant, a repair bill, a one-off receipt) → add a row to
-  `streams`. `kind` is `rent` | `notional_rent` | `expense`; `period` is `monthly` | `annual` |
-  `oneoff`; a blank `end` means still running. To model a rent *increase*, end the old row and add
-  a new one from that date — the ledger handles overlapping windows correctly.
+  `streams`. `period` is `monthly` | `annual` | `oneoff`; a blank `end` means still running. To
+  model a rent *change or handover*, end the old row on that date and add a new one starting
+  there — exactly how 2/4 moves from B1 at ₹8,500 to B2 at ₹8,250 in Sep 2026. `kind` is one of:
+
+  | kind | meaning |
+  |---|---|
+  | `rent` | cash rent collected by `actor` on the estate's behalf |
+  | `occupation_charge` | agreed rent payable **by** an heir in occupation; counted like rent received by them |
+  | `notional_rent` | hypothetical market rent, only counted when the occupation switch is on |
+  | `expense` | estate outgoing paid by `actor`, recoverable pro rata |
+  | `distribution` | a **transfer**: `actor` hands money to others per `weights`. Creates no entitlement — it only reduces the payer's over-collection and the recipients' shortfall. Leave `amount` null and give `source_streams` to pool those streams automatically, so a rent change flows through to what gets shared |
+
+- **A new debt owed TO the estate** → add to `estate_receivables` with `debtor` and `amount`. It is
+  added to the corpus and charged in full to the debtor, who then takes his own share back.
 - **A new debt, funeral cost, or wasiyya** → add a row to `estate_liabilities`. It comes off the
   corpus before the shares, in the correct Hanafi order.
+- **Changing the agreed baseline** → edit `config.json` (or publish from an admin's
+  workspace) and bump `meta.baseline_version`. Every saved workspace is then migrated on
+  next open: the new facts win, each person's scenario switches are carried over, and
+  they are shown a banner saying exactly what changed.
 - **A change in the heirs** (a death, a new heir class) → edit `estates[].heirs`. The share engine
   recomputes; it supports husband/wife, father, mother, sons, daughters.
 - **A property sale or revaluation** → edit `rate_per_sqft` or `lump_value`, or set

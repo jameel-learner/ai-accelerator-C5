@@ -1,0 +1,54 @@
+EDUKRIPA RAG CHATBOT DEMO COMMANDS
+===================================
+
+Run these from the project root:
+C:\edukripa_Project\RagChatbot_AITraining
+
+1. Activate the virtual environment
+-----------------------------------
+.\venv\Scripts\Activate.ps1
+
+2. Install dependencies (first setup only)
+------------------------------------------
+pip install -r requirements.txt
+
+3. Index every PDF in the data folder
+-------------------------------------
+python src/main.py
+
+4. Or index one PDF only
+------------------------
+python src/main.py "data\light notes.pdf"
+
+5. Check the number and text of stored chunks
+---------------------------------------------
+@'
+from src.vector_store import VectorStore
+
+chunks = VectorStore().all_chunks()
+selected = [c for c in chunks if c["source"] == "light notes.pdf"]
+
+print(f"Chunks: {len(selected)}")
+for c in selected:
+    print(f"\nChunk {c['chunk_id']} | page {c['page']} | words {c['word_start']}-{c['word_end']}")
+    print(c["text"][:500])
+'@ | python -
+
+6. Start the terminal chatbot
+-----------------------------
+python src/rag.py
+
+Type a question, then type quit to exit.
+
+7. Start the Streamlit web application
+--------------------------------------
+streamlit run src/app.py
+
+Open the URL shown in the terminal, usually:
+http://localhost:8501
+
+IMPORTANT:
+- Run each command separately, pressing Enter after each one.
+- Keep the Streamlit terminal running while using the web app.
+- If a PDF filename contains spaces, keep the quotation marks.
+- Do not put API keys in this file or share your .env file.

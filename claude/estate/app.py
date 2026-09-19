@@ -46,10 +46,14 @@ def load_workspace(user, force=False):
         for k in [k for k in st.session_state if str(k).startswith(("ed_", "hr_", "raw_json"))]:
             del st.session_state[k]
         if saved:
-            st.session_state.cfg = saved["config"]
-            st.session_state.cfg_source = "your saved workspace"
+            migrated, report = E.migrate_to_baseline(saved["config"], E.load_config())
+            st.session_state.cfg = migrated
+            st.session_state.cfg_migration = report
+            st.session_state.cfg_source = ("your settings on the new baseline" if report
+                                           else "your saved workspace")
             st.session_state.cfg_saved_at = saved.get("saved_at", "")
         else:
+            st.session_state.cfg_migration = None
             st.session_state.cfg = E.load_config()
             st.session_state.cfg_source = "shared baseline (unsaved)"
             st.session_state.cfg_saved_at = ""
@@ -112,7 +116,8 @@ with st.sidebar:
     basis = st.radio(
         "Basis",
         list(basis_opts.keys()),
-        index=list(basis_opts.keys()).index(cfg["policy"].get("basis", "timeline")),
+        index=max(0, list(basis_opts.keys()).index(cfg["policy"].get("basis", "timeline"))
+                  if cfg["policy"].get("basis", "timeline") in basis_opts else 0),
         format_func=lambda k: {"timeline": "Timeline (both deaths)",
                                "father_death": "From father's death",
                                "mother_death": "From mother's death"}[k],
@@ -126,39 +131,46 @@ with st.sidebar:
 
     st.divider()
     st.subheader("Fiqh policy switches")
-    pm = cfg["policy_meta"]
+    # fall back to the baseline's metadata so a workspace saved before a label
+    # existed still renders instead of raising
+    pm = dict(E.load_config().get("policy_meta", {}))
+    pm.update(cfg.get("policy_meta", {}) or {})
+    for _k in ("charge_occupation_rent", "include_pre_death_flows",
+               "s1_gold_gift_valid", "include_estate_receivables", "gold_split_rule", "basis"):
+        pm.setdefault(_k, {"label": _k.replace("_", " ").capitalize(),
+                           "default_reason": "", "options": {}})
     cfg["policy"]["charge_occupation_rent"] = st.toggle(
         pm["charge_occupation_rent"]["label"],
-        value=cfg["policy"]["charge_occupation_rent"],
+        value=cfg["policy"].get("charge_occupation_rent", True),
         help=pm["charge_occupation_rent"]["default_reason"])
     cfg["policy"]["include_pre_death_flows"] = st.toggle(
         pm["include_pre_death_flows"]["label"],
-        value=cfg["policy"]["include_pre_death_flows"],
+        value=cfg["policy"].get("include_pre_death_flows", False),
         help=pm["include_pre_death_flows"]["default_reason"])
-    cfg["policy"]["treat_2015_gift_as_advance"] = st.toggle(
-        pm["treat_2015_gift_as_advance"]["label"],
-        value=cfg["policy"]["treat_2015_gift_as_advance"],
-        help=pm["treat_2015_gift_as_advance"]["default_reason"])
+    cfg["policy"]["include_estate_receivables"] = st.toggle(
+        pm["include_estate_receivables"]["label"],
+        value=cfg["policy"].get("include_estate_receivables", True),
+        help=pm["include_estate_receivables"]["default_reason"])
     cfg["policy"]["s1_gold_gift_valid"] = st.toggle(
         pm["s1_gold_gift_valid"]["label"],
-        value=cfg["policy"]["s1_gold_gift_valid"],
+        value=cfg["policy"].get("s1_gold_gift_valid", False),
         help=pm["s1_gold_gift_valid"]["default_reason"])
     cfg["policy"]["include_disputed_p6"] = st.toggle(
         "Include the disputed P6 in the corpus",
-        value=cfg["policy"]["include_disputed_p6"],
+        value=cfg["policy"].get("include_disputed_p6", False),
         help="P6 is sub judice. Keep OFF for a distributable-today figure.")
     cfg["policy"]["gold_split_rule"] = st.selectbox(
         pm["gold_split_rule"]["label"],
         ["shariah", "equal_5"],
-        index=["shariah", "equal_5"].index(cfg["policy"]["gold_split_rule"]),
+        index=["shariah", "equal_5"].index(cfg["policy"].get("gold_split_rule", "shariah")),
         format_func=lambda k: pm["gold_split_rule"]["options"][k])
     cfg["policy"]["expenses_are_reimbursable"] = st.toggle(
         "Expenses on the estate are reimbursable",
-        value=cfg["policy"]["expenses_are_reimbursable"],
+        value=cfg["policy"].get("expenses_are_reimbursable", True),
         help="A co-owner who preserves the common property may recover the others' rateable share.")
     cfg["policy"]["allow_assumed_streams"] = st.toggle(
         "Include streams marked ASSUMED",
-        value=cfg["policy"]["allow_assumed_streams"],
+        value=cfg["policy"].get("allow_assumed_streams", True),
         help="Some flows (e.g. who took the tower rent before the mother's death) are inferred, not stated.")
 
     st.divider()
@@ -200,6 +212,20 @@ tbl = S["table"]
 heirs = E.heir_ids(cfg)
 
 
+rep = st.session_state.get("cfg_migration")
+if rep:
+    with st.container():
+        st.warning(
+            f'**Your saved settings were moved onto the new shared baseline '
+            f'({rep["to_version"]}).** The estate facts — properties, rents, occupation '
+            "charges, debts owed back — now come from the agreed baseline, which overrides "
+            "anything stored in your workspace. Your own scenario choices were carried over"
+            + (f' ({", ".join(rep["kept"])})' if rep["kept"] else "")
+            + (f'. New switches added: {", ".join(rep["added"])}' if rep["added"] else "")
+            + (f'. Retired and dropped: {", ".join(rep["dropped"])}' if rep["dropped"] else "")
+            + ". Press **Save my settings** to keep this.", icon="🔄")
+
+
 # ==========================================================================
 # 1. OVERVIEW
 # ==========================================================================
@@ -207,21 +233,24 @@ if page == "📊 Overview":
     st.title("Estate at a glance")
     st.caption(f'Basis: **{basis}** · accounted to **{S["as_of"]}** · '
                f'{"P6 included" if cfg["policy"]["include_disputed_p6"] else "P6 (sub judice) excluded"} · '
-               f'{"notional rent ON" if cfg["policy"]["charge_occupation_rent"] else "notional rent OFF"}')
+               f'{"occupation rents charged" if cfg["policy"]["charge_occupation_rent"] else "occupation rents NOT charged"}')
 
     c = st.columns(4)
-    c[0].metric("Gross corpus", money(val["gross_corpus"]))
+    c[0].metric("Gross corpus", money(val["gross_corpus"]),
+                help="Properties + debts owed back to the estate")
     c[1].metric("Liabilities (dayn)", money(val["total_liabilities"]),
                 help="Refundable tenant advances + funeral + debts + wasiyya")
     c[2].metric("Net distributable", money(val["net_corpus"]))
     c[3].metric("Post-death income accounted", money(flows["totals"]["income_in_scope"]))
 
-    c = st.columns(4)
+    c = st.columns(5)
     c[0].metric("Estate expenses (reimbursable)", money(flows["totals"]["expense_in_scope"]))
     c[1].metric("Net estate income", money(flows["totals"]["net_estate_income"]))
     c[2].metric("Excluded as out-of-scope", money(flows["totals"]["out_of_scope"]),
-                help="Lifetime flows and any switched-off notional rent")
-    c[3].metric("Gold pool", money(S["gold"]["pool_value"]),
+                help="Lifetime flows, and occupation charges if they are switched off")
+    c[3].metric("Debts owed to the estate", money(val["receivables_total"]),
+                help="X3 (B1) and X1 (B2) - added to the corpus and charged to the debtor")
+    c[4].metric("Gold pool", money(S["gold"]["pool_value"]),
                 help=f'{S["gold"]["pool_grams"]:.0f} g @ Rs {S["gold"]["rate"]:,.0f}/g')
 
     st.divider()
@@ -271,9 +300,10 @@ if page == "📊 Overview":
     st.subheader("Where each heir stands today")
     disp = tbl[["name", "relation", "share_fraction", "share_pct",
                 "corpus_entitlement", "income_expense_net", "gold_adjustment",
-                "gift_setoff", "total_entitlement"]].copy()
+                "receivable_due", "total_entitlement"]].copy()
     disp.columns = ["Heir", "Class", "Share", "Share %", "Corpus entitlement",
-                    "Rent/expense net", "Gold adjustment", "Gift set-off", "Total entitlement"]
+                    "Rent/expense net", "Gold adjustment", "Owed back to estate",
+                    "Total entitlement"]
     st.dataframe(
         disp, hide_index=True, width="stretch",
         column_config={
@@ -281,9 +311,17 @@ if page == "📊 Overview":
             "Corpus entitlement": st.column_config.NumberColumn(format="₹%,.0f"),
             "Rent/expense net": st.column_config.NumberColumn(format="₹%,.0f"),
             "Gold adjustment": st.column_config.NumberColumn(format="₹%,.0f"),
-            "Gift set-off": st.column_config.NumberColumn(format="₹%,.0f"),
+            "Owed back to estate": st.column_config.NumberColumn(format="₹%,.0f"),
             "Total entitlement": st.column_config.NumberColumn(format="₹%,.0f"),
         })
+
+    if val["receivables_total"] > 0:
+        st.caption(
+            f'Reconciliation: the corpus of {money(val["net_corpus"])} includes '
+            f'{money(val["receivables_total"])} still to be brought back in by B1 and B2. '
+            "The heirs' totals therefore sum to "
+            f'{money(val["net_corpus"] - val["receivables_total"])} — the rest arrives as '
+            "those two pay their debts in, and is already counted in everyone's share above.")
 
     st.subheader("Cash to settle between the heirs (before the corpus is divided)")
     net = flows["positions"][flows["positions"]["net"].abs() > 1].copy()
@@ -454,9 +492,9 @@ elif page == "🏠 Properties & corpus":
     c[0].metric("Estate-owned units", len(est),
                 f'{len(cash)} let · {len(imputed)} occupied by an heir')
     c[1].metric("Cash rent / month (all let units)", money(cash["rent"].sum()))
-    c[2].metric("Imputed rent forgone / month", money(imputed["rent"].sum()),
-                help="Market rent of the units occupied by B1 and B2. Not charged unless "
-                     "the notional-rent switch is on.")
+    c[2].metric("Occupation charges / month", money(imputed["rent"].sum()),
+                help="Agreed rent payable to the estate by the heirs in occupation "
+                     "(B2 in 2/1, B1 in the P3 duplex, S1 in the P3 cellar).")
     c[3].metric("P2 gross yield", f'{p2_cash * 12 / max(p2_value, 1) * 100:.2f}%',
                 help="P2 cash rent only, against P2's own estate value.")
 
@@ -570,6 +608,10 @@ elif page == "👤 Heir statement":
     c[2].metric("Rent / expense net", money(row["income_expense_net"]),
                 delta_note(row["income_expense_net"]))
     c[3].metric("Total entitlement", money(row["total_entitlement"]))
+    if abs(row.get("receivable_due", 0)) > 1:
+        st.error(f'**Owed back to the estate: {money(-row["receivable_due"])}.** '
+                 "Charged in full; this heir then takes their own share of it back through "
+                 "the corpus along with everyone else.", icon="⚠️")
 
     st.divider()
     l, r = st.columns(2)
@@ -604,9 +646,9 @@ elif page == "👤 Heir statement":
             for u in occ:
                 notional = float(u["rent"]) if cfg["policy"]["charge_occupation_rent"] else 0.0
                 st.write(f'• **{u["property"]} / {u["unit"]}** ({u["bhk"]}) — in personal occupation. '
-                         f'Market rent {E.inr_full(u["rent"])}/mo; '
-                         + (f'charged as notional rent.' if notional
-                            else 'not charged (Hanafi default — no ujrat al-mithl between co-owners).'))
+                         f'Agreed rent {E.inr_full(u["rent"])}/mo; '
+                         + ('payable to the estate.' if notional
+                            else 'NOT charged — the occupation-rent switch is off.'))
         else:
             st.write("• None in personal occupation.")
 
