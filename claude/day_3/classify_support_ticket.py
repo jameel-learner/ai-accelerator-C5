@@ -1,21 +1,19 @@
 """
 LLM as API — classify_support_ticket
 Uses OpenRouter (chat.completions) with a free model.
-Install: pip install openai
-Set env:  OPENROUTER_API_KEY=<your_key>
+Install: pip install openai streamlit
+Set secret: OPENROUTER_API_KEY=<your_key>  (in .streamlit/secrets.toml, or
+Streamlit Cloud's App settings -> Secrets)
 """
 
-import os
 import json
+import streamlit as st
 from openai import OpenAI
-from dotenv import load_dotenv
-
-load_dotenv()  # reads .env and loads variables into the environment
 
 # ── Client setup ──────────────────────────────────────────────────────────────
 
 client = OpenAI(
-    api_key=os.environ.get("OPENROUTER_API_KEY"),
+    api_key=st.secrets["OPENROUTER_API_KEY"],
     base_url="https://openrouter.ai/api/v1",
 )
 
