@@ -16,16 +16,16 @@ import sys
 from pathlib import Path
 
 import streamlit as st
-from dotenv import load_dotenv
+# from dotenv import load_dotenv
 from openai import OpenAI
 
 # ── Wire up the feature modules (kept alongside this app) ───────────────────
 
-APP_DIR = Path(__file__).resolve().parent
-if str(APP_DIR) not in sys.path:
-    sys.path.insert(0, str(APP_DIR))
+# APP_DIR = Path(__file__).resolve().parent
+# if str(APP_DIR) not in sys.path:
+#     sys.path.insert(0, str(APP_DIR))
 
-load_dotenv(APP_DIR / ".env")
+# load_dotenv(APP_DIR / ".env")
 
 import analyze_feedback as feat_feedback  # noqa: E402
 import classify_support_ticket as feat_ticket  # noqa: E402
@@ -36,10 +36,25 @@ import generate_seo_meta as feat_seo  # noqa: E402
 
 st.set_page_config(page_title="LLM-as-API Playground", page_icon="🧩", layout="wide")
 
+# Initialize the OpenAI client with OpenRouter
+api_key = st.secrets.get("OPENROUTER_API_KEY")
+if not api_key:
+    st.error("Missing OPENROUTER_API_KEY. Add it to .streamlit/secrets.toml.")
+    st.stop()
+
 client = OpenAI(
-    api_key=os.environ.get("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+    default_headers={
+        "HTTP-Referer": "http://localhost:8501",
+        "X-Title": "My ChatBot",
+    },
 )
+# client = OpenAI(
+#     api_key=os.environ.get("OPENROUTER_API_KEY"),
+#     base_url="https://openrouter.ai/api/v1",
+# )
+
 
 # ── Feature registry ──────────────────────────────────────────────────────────
 
